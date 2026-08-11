@@ -42,12 +42,19 @@ export function isAvailableBasicTimeline(timeline: BasicTimelineType | undefined
 		case 'local':
 			return ($i == null && instance.policies.ltlAvailable) || ($i != null && $i.policies.ltlAvailable);
 		case 'social':
+			// Deliberately not gated on federation: unlike global and bubble, the
+			// social timeline is followees + local public notes + your own, so with
+			// federation off it still has local content to show.
 			return $i != null && $i.policies.ltlAvailable;
 		case 'bubble':
+			// The bubble timeline selects only remote notes (userHost IS NOT NULL)
+			// from bubbled instances, so with federation off it has nothing to draw
+			// on but frozen history, if any.
+			if (instance.federation === 'none') return false;
 			return ($i == null && instance.policies.btlAvailable) || ($i != null && $i.policies.btlAvailable);
 		case 'global':
-			// With federation off nothing arrives from other instances, so the
-			// global timeline can only ever be empty.
+			// The global timeline is every public note with no host filter, so with
+			// federation off it degenerates into a duplicate of the local timeline.
 			if (instance.federation === 'none') return false;
 			return ($i == null && instance.policies.gtlAvailable) || ($i != null && $i.policies.gtlAvailable);
 		default:
