@@ -547,6 +547,61 @@ limits to match.
 **`EACCES` / permission denied writing to `/sharkey/files`**
 `files/` isn't owned by UID 991. `sudo chown -R 991:991 files`.
 
+**Build fails on a missing emoji asset**
+
+```
+[vite:asset] Could not load /sharkey/packages/frontend/../../fluent-emojis/dist/1f3c6.png
+ENOENT: no such file or directory
+```
+
+The emoji submodules are empty. Sharkey pulls emoji artwork from two
+submodules declared in `.gitmodules` — `fluent-emojis` and `tossface-emojis` —
+and the frontend build imports files out of them directly.
+
+First try the obvious fix in your checkout:
+
+```bash
+git submodule update --init --recursive
+```
+
+If that prints nothing and the directories are still empty, the *gitlinks are
+missing from the index*. This happens when a repository is imported as a single
+squashed commit: `.gitmodules` survives, but the `160000` gitlink entries that
+record which commit each submodule points at do not. `git submodule update`
+then has nothing to act on — and, importantly, **exits 0**, so the Docker build
+happily continues and only fails minutes later inside `pnpm build`.
+
+Check with:
+
+```bash
+git ls-files -s | grep ^160000
+```
+
+No output means the gitlinks are gone. Restore them by cloning each submodule
+into place and staging it:
+
+```bash
+git clone https://github.com/misskey-dev/emojis.git fluent-emojis
+git -C fluent-emojis checkout cae981eb4c5189ea9ea3230e83b876a5068df7d1
+git add fluent-emojis
+
+git clone https://activitypub.software/TransFem-org/tossface-emojis.git tossface-emojis
+git add tossface-emojis
+
+git commit -m "Restore emoji submodule gitlinks"
+```
+
+**The pinned commit for `fluent-emojis` matters.** That repository was
+restructured into a monorepo in May 2026 and its prebuilt `dist/` directory was
+deleted, so cloning its default branch today gives you a tree with no
+`dist/1f3c6.png` and the build fails exactly the same way. Commit `cae981e`
+(2022-12-26) is the last one carrying the 1764 prebuilt PNGs, and it was the
+repository's tip for the entire period this Sharkey version targets.
+
+The Dockerfile checks for both directories immediately after the submodule
+step, so a broken checkout now fails in seconds with a clear message instead of
+after a long build.
+
 **The build is killed / runs out of memory**
 Give Docker more RAM (6–8 GB). On low-memory machines, build on a bigger
 machine and push the image to a registry, or use the upstream image if you

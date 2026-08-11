@@ -18,6 +18,18 @@ WORKDIR /sharkey
 COPY --link . ./
 
 RUN git submodule update --init --recursive
+# `git submodule update` exits 0 even when the submodule gitlinks are missing
+# from the index (e.g. after a squashed import that kept .gitmodules but dropped
+# the gitlinks), leaving these directories empty. Without this guard the build
+# gets all the way to `pnpm build` before failing with a confusing
+# "[vite:asset] Could not load .../fluent-emojis/dist/1f3c6.png".
+RUN test -f fluent-emojis/dist/1f3c6.png && test -d tossface-emojis/dist || { \
+	echo "ERROR: emoji submodules are empty."; \
+	echo "  Run 'git submodule update --init --recursive' in your checkout."; \
+	echo "  If that reports nothing, the gitlinks are missing from the index —"; \
+	echo "  see docs/docker-cloudflare-tunnel.md, 'Build fails on a missing emoji asset'."; \
+	exit 1; \
+}
 RUN pnpm config set fetch-retries 5
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
 	pnpm i --frozen-lockfile --aggregate-output
