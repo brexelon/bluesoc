@@ -238,7 +238,11 @@ function closeTutorial(): void {
 
 function switchTlIfNeeded() {
 	if (isBasicTimeline(src.value) && !isAvailableBasicTimeline(src.value)) {
-		src.value = availableBasicTimelines()[0];
+		// availableBasicTimelines() is empty for a logged-out visitor when every
+		// public timeline is disabled. Assigning undefined would break the page,
+		// which reads src.split(':').
+		const fallback = availableBasicTimelines()[0];
+		if (fallback != null) src.value = fallback;
 	}
 }
 

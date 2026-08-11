@@ -46,6 +46,9 @@ export function isAvailableBasicTimeline(timeline: BasicTimelineType | undefined
 		case 'bubble':
 			return ($i == null && instance.policies.btlAvailable) || ($i != null && $i.policies.btlAvailable);
 		case 'global':
+			// With federation off nothing arrives from other instances, so the
+			// global timeline can only ever be empty.
+			if (instance.federation === 'none') return false;
 			return ($i == null && instance.policies.gtlAvailable) || ($i != null && $i.policies.gtlAvailable);
 		default:
 			return false;
