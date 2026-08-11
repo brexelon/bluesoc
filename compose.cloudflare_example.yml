@@ -1,0 +1,84 @@
+# Sharkey + Cloudflare Tunnel example compose file.
+#
+# This is `compose_example.yml` with a `cloudflared` service added, so the
+# instance can be reached from the internet without opening any inbound port
+# on your router or firewall.
+#
+# Usage:
+#   cp compose.cloudflare_example.yml compose.yml
+# See docs/docker-cloudflare-tunnel.md for the full walkthrough.
+
+services:
+  web:
+#   image: registry.activitypub.software/transfem-org/sharkey:latest
+    build: .
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      # Loopback only: the tunnel reaches Sharkey over the `shonk` network, so
+      # this is just for local debugging. Delete it if you don't want it.
+      - "127.0.0.1:3000:3000"
+    networks:
+      - shonk
+    environment:
+      - NODE_OPTIONS="--max-old-space-size=8192"
+    volumes:
+      - ./files:/sharkey/files
+      - ./.config:/sharkey/.config:ro
+
+  cloudflared:
+    restart: always
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    env_file:
+      # Must contain: TUNNEL_TOKEN=<token from the Cloudflare dashboard>
+      - .config/cloudflared.env
+    networks:
+      - shonk
+    depends_on:
+      - web
+
+  redis:
+    restart: always
+    image: redis:7-alpine
+    networks:
+      - shonk
+    volumes:
+      - ./redis:/data
+    healthcheck:
+      test: "redis-cli ping"
+      interval: 5s
+      retries: 20
+
+  db:
+    restart: always
+    image: groonga/pgroonga:4.0.1-alpine-17
+    networks:
+      - shonk
+    env_file:
+      - .config/docker.env
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    healthcheck:
+      test: "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"
+      interval: 5s
+      retries: 20
+
+#  meilisearch:
+#    restart: always
+#    image: getmeili/meilisearch:v1.13.0
+#    environment:
+#      - MEILI_NO_ANALYTICS=true
+#      - MEILI_ENV=production
+#      - MEILI_MASTER_KEY=ChangeThis
+#    networks:
+#      - shonk
+#    volumes:
+#      - ./meili_data:/meili_data
+
+networks:
+  shonk:
