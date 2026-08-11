@@ -137,13 +137,18 @@ misskeyApiGet('federation/instances', {
 
 .contents {
 	position: relative;
+	box-sizing: border-box;
 	width: min(430px, calc(100% - 32px));
-	margin-left: 128px;
-	padding: 100px 0 100px 0;
-
-	@media (max-width: 1200px) {
-		margin: auto;
-	}
+	margin-inline: auto;
+	padding: 32px 0;
+	// Fill the scroll container so the card can be centred vertically. Because
+	// this stays a normal in-flow block, a card taller than the viewport simply
+	// grows it and .root scrolls, rather than being clipped the way a flex or
+	// grid centred item would be.
+	min-height: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
 }
 
 .federation {
