@@ -51,3 +51,8 @@ With Sharkey, you can enable sign-ups, subject to manual moderator approval and 
 ## Documentation
 
 Sharkey Documentation can be found at [Sharkey Documentation](https://docs.joinsharkey.org/docs/install/fresh/)
+
+### Running this instance
+
+- [Docker + Cloudflare Tunnel installation guide](docs/docker-cloudflare-tunnel.md) — install this
+  instance locally with Docker Compose and publish it without opening any inbound port.
